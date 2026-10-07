@@ -1,0 +1,22 @@
+services:
+  web-service:
+    build:
+      context: ../docker/php
+    working_dir: /var/www/html
+    environment:
+      VERIFICATION_SERVICE_URL: http://nginx/api/registration
+      WEB_SERVICE_INTERNAL_TOKEN: ${WEB_SERVICE_INTERNAL_TOKEN:-}
+      APP_ENV: ${APP_ENV:-dev}
+      APP_DEBUG: ${APP_DEBUG:-1}
+      APP_SECRET: ${APP_SECRET:-local-web-service-change-before-deploy}
+    volumes:
+      - ../../services/web-service:/var/www/html
+    command: ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
+    healthcheck:
+      test: ["CMD", "php", "bin/console", "about", "--no-interaction"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    networks:
+      - backend

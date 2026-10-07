@@ -1,0 +1,39 @@
+routes:
+
+  email.send.requested:
+    kafka:
+      topics:
+        - verification_events
+    targets:
+      - service: email
+        path: /email/verification/send
+
+
+  email.send.registration_completed:
+    kafka:
+      topics:
+        - verification_events
+    targets:
+      - service: email
+        path: /email/registration/completed
+
+
+  auth.new.user:
+    kafka:
+      topics:
+        - verification_events
+    targets:
+      - service: auth
+        path: /auth/create/user
+
+
+#  verification.created:
+#
+#    kafka:
+#      topics:
+#        - verification_event
+#        - audit_event
+
+#    targets:
+#      - service: notification
+#        path: /verification/created

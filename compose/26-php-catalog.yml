@@ -1,0 +1,83 @@
+services:
+  catalog-service:
+    build:
+      context: ../docker/php
+    container_name: catalog_service_php
+
+    environment:
+      # =====================
+      # APP
+      # =====================
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_SECRET: ${APP_SECRET}
+
+      APP_SHARE_DIR: ${APP_SHARE_DIR}
+      DEFAULT_URI: ${DEFAULT_URI}
+
+      # =====================
+      # POSTGRES
+      # =====================
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      DB_SERVER_VERSION: ${DB_SERVER_VERSION}
+      DB_CHARSET: ${DB_CHARSET}
+
+      DB_SCHEMA: ${CATALOG_DB_SCHEMA}
+
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?serverVersion=${DB_SERVER_VERSION}&charset=${DB_CHARSET}&options=-csearch_path%3D${CATALOG_DB_SCHEMA}"
+
+      # =====================
+      # REDIS
+      # =====================
+      REDIS_URL: ${REDIS_URL}
+      CATALOG_CACHE_TTL: ${CATALOG_CACHE_TTL}
+      CATALOG_CACHE_VERSION: ${CATALOG_CACHE_VERSION}
+
+      CATALOG_IMPORT_BATCH_SIZE: ${CATALOG_IMPORT_BATCH_SIZE}
+
+      KAFKA_GATEWAY_URL: ${KAFKA_GATEWAY_URL}
+
+      APP_TIMEZONE: ${TZ}
+
+      APP_NAME: ${CATALOG_APP_NAME}
+      APP_VERSION: ${CATALOG_APP_VERSION}
+
+      CATALOG_UPLOAD_DIR: ${CATALOG_UPLOAD_DIR}
+
+      JWT_PUBLIC_KEY_FILE: ${JWT_CONTAINER_DIR}/public.pem
+      JWT_AUDIENCE_ACCESS_TOKEN: ${JWT_AUDIENCE_ACCESS_TOKEN}
+      JWT_CATALOG_ISSUER: ${JWT_CATALOG_ISSUER}
+
+    volumes:
+      - ../../services/catalog-service:/var/www/html
+      - ../docker/catalog/fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+      - ${JWT_PUBLIC_KEY_PATH}:${JWT_CONTAINER_DIR}/public.pem:ro
+
+    working_dir: /var/www/html
+
+    # Расширенная команда
+    command: >
+      sh -c "
+        mkdir -p /var/www/html/var/cache &&
+        mkdir -p /var/www/html/var/log &&
+        mkdir -p /var/www/html/var/uploads &&
+        chown -R www-data:www-data /var/www/html/var &&
+        chmod -R 775 /var/www/html/var &&
+        if [ \"$APP_ENV\" = \"dev\" ]; then
+          rm -rf /var/www/html/var/cache/* &&
+          echo 'Cache cleared'
+        fi &&
+        echo 'Все папки созданы и права настроены' &&
+        php-fpm
+      "
+
+    depends_on:
+      - postgres
+      - redis
+
+    networks:
+      - backend

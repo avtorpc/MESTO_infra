@@ -1,0 +1,104 @@
+##################################
+# Symfony code (внешний repo)
+##################################
+
+# Игнорируем весь backend-код
+symfony/app/*
+
+# Но сохраняем саму папку
+!symfony/app/.gitkeep
+
+##################################
+# Storage (данные БД)
+##################################
+
+# Игнорируем всё содержимое postgres
+storage/postgresql/*
+
+# Но оставляем структуру папки
+!storage/postgresql/.gitkeep
+
+
+##################################
+# Environment
+##################################
+
+.env
+.env.local
+.env.*.local
+.env.env
+
+
+##################################
+# Logs
+##################################
+
+*.log
+
+
+##################################
+# OS / IDE
+##################################
+
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+.continue/
+*.swp
+
+
+##################################
+# Docker overrides (если появятся)
+##################################
+
+docker-compose.override.yml
+
+
+##################################
+# Services (микросервисы)
+##################################
+
+# Игнорируем все файлы
+services/**/*
+java_services/**/*
+
+# Сохраняем только .gitkeep файлы где угодно
+!services/**/.gitkeep
+!java_services/**/.gitkeep
+
+
+# PHP лог-файлы
+var/log/
+/var/log/php/
+*.log
+
+# Xdebug
+xdebug.log
+*.xdebug
+
+# Временные файлы
+*.tmp
+*.cache
+
+# MESTO: local/runtime files must not enter the new history
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.tmp
+*.cache
+*.pem
+*.key
+*.p12
+*.jks
+/.env
+/.env.dev
+/.env.test
+/.env.local
+/.env.local.php
+/.env.*.local
+
+/storage/*
+!storage/.gitkeep

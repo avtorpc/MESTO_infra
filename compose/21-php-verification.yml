@@ -1,0 +1,62 @@
+services:
+  verification-service:
+    build:
+      context: ../docker/php
+    container_name: verification_service_php
+
+    environment:
+      WEB_SERVICE_INTERNAL_TOKEN: ${WEB_SERVICE_INTERNAL_TOKEN:-}
+      # =====================
+      # APP
+      # =====================
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_SECRET: ${APP_SECRET}
+
+      APP_SHARE_DIR: ${APP_SHARE_DIR}
+      DEFAULT_URI: ${DEFAULT_URI}
+
+      # =====================
+      # POSTGRES
+      # =====================
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      DB_SERVER_VERSION: ${DB_SERVER_VERSION}
+      DB_CHARSET: ${DB_CHARSET}
+
+      DB_SCHEMA: ${VERIFICATION_DB_SCHEMA}
+
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?serverVersion=${DB_SERVER_VERSION}&charset=${DB_CHARSET}&options=-csearch_path%3D${VERIFICATION_DB_SCHEMA}"
+
+      # REDIS
+      REDIS_URL: ${REDIS_URL}
+
+      # API kafka
+      KAFKA_GATEWAY_URL: ${KAFKA_GATEWAY_URL}
+
+      APP_TIMEZONE: ${TZ}
+
+      APP_NAME: ${VERIFICATION_APP_NAME}
+      APP_VERSION: ${VERIFICATION_APP_VERSION}
+
+      DICTIONARY_SERVICE_URL: ${DICTIONARY_SERVICE_URL}
+
+      JWT_PUBLIC_KEY_FILE: ${JWT_CONTAINER_DIR}/public.pem
+      JWT_AUDIENCE_ACCESS_TOKEN: ${JWT_AUDIENCE_ACCESS_TOKEN}
+      JWT_CATALOG_ISSUER: ${JWT_CATALOG_ISSUER}
+
+    volumes:
+      - ../../services/verification-service:/var/www/html
+      - ${JWT_PUBLIC_KEY_PATH}:${JWT_CONTAINER_DIR}/public.pem:ro
+
+    working_dir: /var/www/html
+
+    depends_on:
+      - postgres
+      - redis
+
+    networks:
+      - backend

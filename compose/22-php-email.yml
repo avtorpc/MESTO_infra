@@ -1,0 +1,47 @@
+services:
+  email-service:
+    build:
+      context: ../docker/php
+    container_name: email_service_php
+    command: ["sh", "-c", "(while true; do php bin/console app:email:consume-pending; sleep 2; done) & exec php-fpm"]
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_SECRET: ${APP_SECRET}
+
+      APP_SHARE_DIR: ${APP_SHARE_DIR}
+      DEFAULT_URI: ${DEFAULT_URI}
+
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      DB_SERVER_VERSION: ${DB_SERVER_VERSION}
+      DB_CHARSET: ${DB_CHARSET}
+
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?serverVersion=${DB_SERVER_VERSION}&charset=${DB_CHARSET}&options=-csearch_path%3D${EMAIL_DB_SCHEMA}"
+
+      DB_SCHEMA: ${EMAIL_DB_SCHEMA}
+
+      REDIS_URL: ${REDIS_URL}
+
+      KAFKA_GATEWAY_URL: ${KAFKA_GATEWAY_URL}
+
+      APP_TIMEZONE: ${TZ}
+
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+      MAILER_DSN: ${MAILER_DSN}
+
+      APP_NAME: ${EMAIL_APP_NAME}
+      APP_VERSION: ${EMAIL_APP_VERSION}
+
+    volumes:
+      - ../../services/email-service:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - redis
+      - postgres
+
+    networks:
+      - backend

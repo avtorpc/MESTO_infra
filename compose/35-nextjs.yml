@@ -1,0 +1,23 @@
+services:
+
+  onmi-front:
+    container_name: onmi_front
+
+    build:
+      context: ../../services/frontend
+      dockerfile: Dockerfile
+
+    working_dir: /app
+
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+
+    expose:
+      - "3000"
+
+    networks:
+      - backend

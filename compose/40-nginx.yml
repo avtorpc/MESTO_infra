@@ -1,0 +1,32 @@
+services:
+
+  nginx:
+    image: nginx:1.29
+    container_name: gateway_nginx
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - ../../services/web-service/public:/var/www/html/public:ro
+      - ../../services:/var/www
+      - ../docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      web-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+
+      verification-service:
+        condition: service_started
+
+      email-service:
+        condition: service_started
+
+
+      event-worker-service:
+        condition: service_healthy
+
+      event-api-service:
+        condition: service_healthy
+
+    networks:
+      - backend
