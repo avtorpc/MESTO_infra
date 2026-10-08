@@ -4,6 +4,8 @@ services:
       context: ../docker/php
     container_name: auth_service_php
     environment:
+      WEB_SERVICE_INTERNAL_TOKEN: ${WEB_SERVICE_INTERNAL_TOKEN:-}
+      REGISTRATION_INTERNAL_TOKEN: ${REGISTRATION_INTERNAL_TOKEN:-}
       APP_ENV: ${APP_ENV}
       APP_DEBUG: ${APP_DEBUG}
       APP_SECRET: ${APP_SECRET}

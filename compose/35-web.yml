@@ -4,6 +4,8 @@ services:
       context: ../docker/php
     working_dir: /var/www/html
     environment:
+      CATALOG_SERVICE_URL: http://nginx/catalog
+      AUTH_SERVICE_URL: http://nginx/auth
       VERIFICATION_SERVICE_URL: http://nginx/api/registration
       WEB_SERVICE_INTERNAL_TOKEN: ${WEB_SERVICE_INTERNAL_TOKEN:-}
       APP_ENV: ${APP_ENV:-dev}
@@ -11,7 +13,7 @@ services:
       APP_SECRET: ${APP_SECRET:-local-web-service-change-before-deploy}
     volumes:
       - ../../services/web-service:/var/www/html
-    command: ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
+    command: ["sh", "-c", "test -f .env || cp .env.example .env; composer install --no-interaction --prefer-dist && exec php-fpm"]
     healthcheck:
       test: ["CMD", "php", "bin/console", "about", "--no-interaction"]
       interval: 10s

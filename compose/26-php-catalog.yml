@@ -1,10 +1,18 @@
 services:
   catalog-service:
+    image: mesto-catalog-gigachat:latest
     build:
       context: ../docker/php
+      target: catalog-gigachat
     container_name: catalog_service_php
 
     environment:
+      AUTH_SERVICE_URL: http://nginx/auth
+      DICTIONARY_SERVICE_URL: ${DICTIONARY_SERVICE_URL}
+      GIGACHAT_AUTH_KEY: ${GIGACHAT_AUTH_KEY:-}
+      GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
+      GIGACHAT_MODEL: ${GIGACHAT_MODEL:-GigaChat-2-Max}
+      GIGACHAT_CA_FILE: /opt/gigachat/ca-bundle.pem
       # =====================
       # APP
       # =====================
@@ -71,8 +79,9 @@ services:
           rm -rf /var/www/html/var/cache/* &&
           echo 'Cache cleared'
         fi &&
-        echo 'Все папки созданы и права настроены' &&
-        php-fpm
+        echo 'Все папки созданы и права настроены';
+        (while true; do php bin/console app:assessment:work; sleep 2; done) &
+        exec php-fpm
       "
 
     depends_on:

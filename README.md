@@ -139,4 +139,17 @@ docker volume prune
 
 ## Веб-приложение «Место»
 
-`make web-up` запускает только Symfony/Twig и Nginx на http://localhost:8080. `make web-down` останавливает эту сборку. Для другого порта: `WEB_PORT=8081 make web-up`. Полная сборка `make up` теперь использует web-service вместо Next.js и порт NGINX_PORT. Код Next.js сохранён, но не включён в основной запуск.
+`make web-up` — синоним `make registration-up`: запускает локальное окружение с единым `gateway_nginx`. `make web-down` — синоним `make registration-down`. Сайт доступен на http://localhost:8080; другой порт задаётся через `NGINX_PORT=8081 make web-up`. `make web-logs` показывает журналы web-service и общего Nginx. Полная сборка `make up` использует тот же gateway_nginx и конфигурацию docker/nginx/default.conf. Код Next.js сохранён, но не включён в основной запуск.
+
+## Регистрация Место
+
+`make registration-up` запускает сайт http://localhost:8080 вместе с auth, verification, dictionaries, Kafka и email. Письма локального режима доступны в Mailpit http://localhost:8025. Используется отдельный именованный том PostgreSQL, старые данные не очищаются. Остановка: `make registration-down`. Нужны непустые WEB_SERVICE_INTERNAL_TOKEN и REGISTRATION_INTERNAL_TOKEN из локального .env. Детали: [registration-mvp.md](../docs/flows/registration-mvp.md).
+
+В каждом режиме работает один контейнер Nginx — `gateway_nginx` (Compose-сервис `nginx`). Он отдаёт статику web-service, направляет страницы в Symfony/PHP-FPM и проксирует `/auth/`, `/api/registration/`, `/email/`, `/api/refbook/`, `/catalog/`, `/event/`. Catalog доступен в полной сборке; окружение регистрации его не запускает. Все маршруты описаны в `docker/nginx/default.conf`, контейнер — в `compose/40-nginx.yml`. Локальная надстройка `compose/registration-local.yml` ограничивает порт Nginx адресом 127.0.0.1 и добавляет Mailpit и отдельный том базы. Отдельного web-nginx больше нет.
+
+Основную сборку и локальное окружение регистрации следует запускать по очереди: они используют одни и те же имена контейнеров. Не используйте `down -v`, если требуется сохранить базу.
+
+
+## Личные кабинеты — 8 октября 2026
+
+Локальный стек make registration-up / make web-up включает catalog-service; make registration-migrate применяет его миграции. web передаёт запросы профилей через CATALOG_SERVICE_URL=http://nginx/catalog, catalog получает исходные регистрационные поля через AUTH_SERVICE_URL=http://nginx/auth и справочники через DICTIONARY_SERVICE_URL. Веб-переход после входа: /cabinet; /user.html и /employer.html — адреса совместимости. Для новых изменений кода очищайте prod-кеш Symfony до ручной проверки новых маршрутов. Подробнее: ../docs/flows/cabinet-and-assessment-selection.md.

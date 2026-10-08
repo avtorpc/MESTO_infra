@@ -7,8 +7,7 @@ services:
       - "${NGINX_PORT}:80"
     volumes:
       - ../../services/web-service/public:/var/www/html/public:ro
-      - ../../services:/var/www
-      - ../docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ../docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       web-service:
         condition: service_healthy
@@ -16,6 +15,9 @@ services:
         condition: service_started
 
       verification-service:
+        condition: service_started
+
+      dictionaries-service:
         condition: service_started
 
       email-service:

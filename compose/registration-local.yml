@@ -1,0 +1,45 @@
+# Local registration stack: separate persistent DB volume and local email inbox.
+services:
+  postgres:
+    volumes: !override
+      - registration_data:/var/lib/postgresql/data
+      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
+  auth-service:
+    image: mesto-web-web-service:latest
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+  verification-service:
+    image: mesto-web-web-service:latest
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+  email-service:
+    image: mesto-web-web-service:latest
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+      MAILER_DSN: smtp://mailpit:1025
+  dictionaries-service:
+    image: mesto-web-web-service:latest
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+  catalog-service:
+    image: mesto-catalog-gigachat:latest
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+  web-service:
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: 0
+  nginx:
+    ports: !override
+      - "127.0.0.1:${NGINX_PORT:-8080}:80"
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:8025:8025"]
+    networks: [backend]
+volumes:
+  registration_data:

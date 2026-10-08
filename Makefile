@@ -241,11 +241,47 @@ rebuild-db-hard:
 	@echo " Database rebuilt successfully (HARD MODE)"
 	@echo "========================================="
 
-WEB_COMPOSE=docker compose --env-file .env -p mesto-web -f compose/00-networks.yml -f compose/35-web.yml -f compose/web-local.yml
 .PHONY: web-up web-down web-logs
-web-up:
-	$(WEB_COMPOSE) up -d --build --wait
-web-down:
-	$(WEB_COMPOSE) down
+# The web app uses the same gateway and dependencies as local registration.
+web-up: registration-up
+web-down: registration-down
 web-logs:
-	$(WEB_COMPOSE) logs --tail=100 web-service web-nginx
+	$(REGISTRATION_COMPOSE) logs --tail=100 web-service nginx
+
+REGISTRATION_COMPOSE=docker compose --env-file .env -p mesto-web \
+ -f compose/00-networks.yml -f compose/10-infra.yml \
+ -f compose/20-php-auth.yml -f compose/21-php-verification.yml \
+ -f compose/22-php-email.yml -f compose/24-php-dictionaries.yml \
+ -f compose/26-php-catalog.yml -f compose/30-java-services.yml -f compose/35-web.yml \
+ -f compose/40-nginx.yml -f compose/registration-local.yml
+.PHONY: registration-up registration-migrate registration-down
+registration-up:
+	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --wait --wait-timeout 180
+	$(MAKE) registration-deps
+	$(MAKE) registration-migrate
+	$(REGISTRATION_COMPOSE) exec -T nginx nginx -t
+	$(REGISTRATION_COMPOSE) exec -T nginx nginx -s reload
+registration-migrate:
+	$(REGISTRATION_COMPOSE) exec -T auth-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T verification-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T email-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T dictionaries-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php bin/console doctrine:migrations:migrate --no-interaction
+registration-down:
+	$(REGISTRATION_COMPOSE) down
+.PHONY: registration-test
+registration-test:
+	../services/verification-service/tests/run-contracts.sh
+
+.PHONY: assessment-test
+assessment-test:
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/gigachat-isolation.php
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/catalog-schema-contract.php
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/assessment-contract.php
+	$(REGISTRATION_COMPOSE) exec -T web-service php tests/task-template-contract.php
+
+.PHONY: registration-deps
+registration-deps:
+	@for service in auth-service verification-service email-service dictionaries-service catalog-service; do \
+	 $(REGISTRATION_COMPOSE) run --rm --no-deps $$service sh -c 'test -f .env || cp .env.example .env; composer install --no-interaction --prefer-dist --no-scripts' || exit $$?; \
+	done
