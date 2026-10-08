@@ -285,3 +285,18 @@ registration-deps:
 	@for service in auth-service verification-service email-service dictionaries-service catalog-service; do \
 	 $(REGISTRATION_COMPOSE) run --rm --no-deps $$service sh -c 'test -f .env || cp .env.example .env; composer install --no-interaction --prefer-dist --no-scripts' || exit $$?; \
 	done
+
+# Diagnostics use the same local project/files as registration-up, never the legacy stack.
+.PHONY: registration-check registration-ps registration-logs registration-restart registration-cache
+registration-check:
+	$(REGISTRATION_COMPOSE) config --quiet
+registration-ps:
+	$(REGISTRATION_COMPOSE) ps
+registration-logs:
+	$(REGISTRATION_COMPOSE) logs --tail=100 $(SERVICE)
+registration-restart:
+	$(REGISTRATION_COMPOSE) restart $(SERVICE)
+registration-cache:
+	@for service in auth-service verification-service email-service dictionaries-service catalog-service web-service; do \
+	 $(REGISTRATION_COMPOSE) exec -T $$service php bin/console cache:clear --env=prod --no-debug || exit $$?; \
+	done

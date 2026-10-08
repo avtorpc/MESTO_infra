@@ -33,7 +33,7 @@ GRANT ALL ON SCHEMA auth TO symfony;
 GRANT ALL ON SCHEMA verification TO symfony;
 GRANT ALL ON SCHEMA email TO symfony;
 GRANT ALL ON SCHEMA dictionaries TO symfony;
-GRANT ALL ON SCHEMA catalog TO symfony
+GRANT ALL ON SCHEMA catalog TO symfony;
 
 \connect symfony_test;
 CREATE SCHEMA IF NOT EXISTS auth;
