@@ -18,9 +18,8 @@ RUN docker-php-ext-install \
     zip \
     pcntl
 
-RUN pecl channel-update pecl.php.net \
-    && pecl install -f rdkafka-6.0.5 \
-    && docker-php-ext-enable rdkafka
+RUN pecl install redis \
+    && docker-php-ext-enable redis
 
 RUN pecl install rdkafka \
     && docker-php-ext-enable rdkafka
