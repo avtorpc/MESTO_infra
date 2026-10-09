@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libpq-dev \
-    librdkafka-dev \
     libzip-dev \
     zip \
     curl
@@ -20,9 +19,6 @@ RUN docker-php-ext-install \
 
 RUN pecl install redis \
     && docker-php-ext-enable redis
-
-RUN pecl install rdkafka \
-    && docker-php-ext-enable rdkafka
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

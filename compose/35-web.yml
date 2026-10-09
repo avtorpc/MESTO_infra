@@ -4,6 +4,8 @@ services:
       context: ../docker/php
     working_dir: /var/www/html
     environment:
+      NODE_SERVICE_URL: http://node-service:3000/chat
+      CHAT_TOKEN_SECRET: ${CHAT_TOKEN_SECRET:?Set CHAT_TOKEN_SECRET in local .env}
       CATALOG_SERVICE_URL: http://nginx/catalog
       AUTH_SERVICE_URL: http://nginx/auth
       VERIFICATION_SERVICE_URL: http://nginx/api/registration

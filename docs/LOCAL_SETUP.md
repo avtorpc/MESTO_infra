@@ -4,7 +4,7 @@
 
 ## 1. Что установить на компьютер
 
-- Git и доступ к девяти репозиториям проекта. Для закрытых репозиториев сначала примите приглашения владельца. Используйте собственные учётные данные GitHub.
+- Git и доступ к десяти репозиториям проекта. Для закрытых репозиториев сначала примите приглашения владельца. Используйте собственные учётные данные GitHub.
 - [Docker Desktop](https://docs.docker.com/desktop/) на macOS/Windows либо Docker Engine с [плагином Compose](https://docs.docker.com/compose/install/) на Linux. Docker должен быть запущен перед выполнением команд.
 - Docker Compose **2.24.4 или новее**: локальная конфигурация использует `!override`. [Описание требования Docker](https://docs.docker.com/reference/compose-file/merge/#replace-value).
 - `make` и OpenSSL. На macOS командные инструменты можно установить через `xcode-select --install`; на Ubuntu/WSL — `sudo apt-get update`, затем `sudo apt-get install git make openssl`.
@@ -49,7 +49,7 @@ MESTO/
     └── event-worker-service/
 ```
 
-У каждого из девяти каталогов свой Git-репозиторий. Общий Git в `MESTO` для запуска не нужен. Дополнительная папка `docs` в корне старой рабочей копии не требуется для выполнения этой инструкции.
+У каждого из десяти каталогов свой Git-репозиторий. Общий Git в `MESTO` для запуска не нужен. Дополнительная папка `docs` в корне старой рабочей копии не требуется для выполнения этой инструкции.
 
 В новой пустой папке выполните:
 
@@ -63,6 +63,7 @@ git clone https://github.com/avtorpc/email-service.git services/email-service
 git clone https://github.com/avtorpc/dictionaries-service.git services/dictionaries-service
 git clone https://github.com/avtorpc/catalog-service.git services/catalog-service
 git clone https://github.com/avtorpc/web-service.git services/web-service
+git clone https://github.com/avtorpc/node-service.git services/node-service
 git clone https://github.com/avtorpc/event-api-service.git java_services/event-api-service
 git clone https://github.com/avtorpc/event-worker-service.git java_services/event-worker-service
 cd ONMI_infra
@@ -79,7 +80,7 @@ cp .env.template .env
 chmod 600 .env
 ```
 
-Откройте `.env` в редакторе. Создайте четыре независимых случайных значения командой `openssl rand -hex 32`, запуская её отдельно для каждого параметра, и заполните:
+Откройте `.env` в редакторе. Создайте шесть независимых случайных значения командой `openssl rand -hex 32`, запуская её отдельно для каждого параметра, и заполните:
 
 | Параметр | Что указать |
 | --- | --- |
@@ -87,6 +88,8 @@ chmod 600 .env
 | `POSTGRES_PASSWORD` | Второе случайное значение; hex не требует URL-экранирования |
 | `WEB_SERVICE_INTERNAL_TOKEN` | Третье случайное значение, общий внутренний доступ web → сервисы |
 | `REGISTRATION_INTERNAL_TOKEN` | Четвёртое случайное значение, внутренний доступ verification → auth |
+| `NODE_DB_PASSWORD` | Пятое случайное значение, пароль отдельного пользователя node_app |
+| `CHAT_TOKEN_SECRET` | Шестое случайное значение, подпись коротких токенов переписки |
 | `GIGACHAT_AUTH_KEY` | Ваш ключ авторизации GigaChat, если нужна генерация/оценка заданий |
 
 Ключ GigaChat — значение Authorization key в Base64, **без** префикса `Basic`. `GIGACHAT_SCOPE=GIGACHAT_API_PERS` соответствует ранее выбранному типу доступа проекта. Если используется другой тип аккаунта, scope должен соответствовать ему. Не заменяйте этот ключ токеном GitHub или OpenAI.
@@ -262,3 +265,23 @@ docker exec -u www-data auth_service_php test -r /var/jwt/private.pem
 Если доступ закрыт, настройте права под вашу конфигурацию Docker. Для обычного rootful Docker на Linux можно выдать только чтение UID 33 через ACL (`setfacl -m u:33:r config/jwt/private.pem`; пакет `acl`). Для rootless Docker сопоставление UID отличается. Не делайте приватный ключ общедоступным для решения этой проблемы.
 
 Если сохраняется ошибка, передайте разработчику название сервиса и очищенное сообщение из журнала. Ключи, пароли и полный вывод окружения не отправляйте.
+
+## Чат соискателя и работодателя
+
+`compose/36-node.yml` запускает NestJS + TypeScript + TypeORM + Socket.IO. Таблицы `node.conversations` и `node.messages` находятся в том же PostgreSQL, пользователь `node_app` имеет права на схему node. Основные учётные данные БД передаются только одноразовому контейнеру chat-db для настройки роли; работающий node-service их не получает.
+
+`make registration-up` устанавливает зависимости, применяет миграции каталога, переносит старые таблицы переписки без удаления строк, настраивает роль, выполняет миграции Node и запускает чат. `make chat-migrate` повторяет настройку и миграции. `make chat-test` проверяет временные диалоги, права, повторные отправки и доставку Socket.IO; тестовые записи удаляются.
+
+Единый gateway_nginx обслуживает `/chat/`, включая WebSocket. Кабинет переписки: http://localhost:8080/cabinet/chats. Соискатель создаёт отклик на странице опубликованной вакансии. Работодатель открывает «Соискатели и чаты» из своей вакансии.
+
+Для другого порта/домена задайте CHAT_ALLOWED_ORIGINS через запятую, например http://localhost:8080,http://127.0.0.1:8080. Пароли и CHAT_TOKEN_SECRET заполняются только в локальном .env. На хост не устанавливаются NodeJS, зависимости и сертификаты.
+
+Дополнительно `make chat-e2e` проверяет полный сценарий через localhost с временными аккаунтами и вакансией, затем удаляет только свои тестовые данные. Для этого необязательного теста нужен Python 3 на хосте.
+
+## Сессия авторизации
+
+Вход сохраняется при бездействии и закрытии браузера. Короткий access-токен автоматически обновляется через `/auth/refresh`; refresh-токен без срока истечения хранится только в серверной сессии web-service, в auth-service — его SHA-256. Браузер получает только HttpOnly cookie с длительным сроком хранения. Очистка cookie или серверного хранилища сессий потребует повторного входа; браузер может ограничивать срок хранения cookie.
+
+Кнопка «Выход» с CSRF-проверкой отзывает текущий refresh-токен через auth-service и уничтожает серверную сессию. Другие входы этого аккаунта сохраняются. Токены доступа и чата остаются короткими; временная недоступность auth-service возвращает ошибку без удаления сессии.
+
+Миграция `Version20261009210000` применяется обычной командой `make registration-up` из ONMI_infra. Проверка на временных аккаунтах: `make auth-session-test` (Python 3 на машине, тесты автоматически очищают свои данные).

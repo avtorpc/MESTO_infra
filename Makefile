@@ -8,7 +8,7 @@ COMPOSE=docker compose \
 	-f compose/24-php-dictionaries.yml \
 	-f compose/26-php-catalog.yml \
 	-f compose/30-java-services.yml \
-	-f compose/35-web.yml \
+	-f compose/35-web.yml -f compose/36-node.yml \
 	-f compose/40-nginx.yml
 
 POSTGRES_SERVICE=postgres
@@ -252,13 +252,15 @@ REGISTRATION_COMPOSE=docker compose --env-file .env -p mesto-web \
  -f compose/00-networks.yml -f compose/10-infra.yml \
  -f compose/20-php-auth.yml -f compose/21-php-verification.yml \
  -f compose/22-php-email.yml -f compose/24-php-dictionaries.yml \
- -f compose/26-php-catalog.yml -f compose/30-java-services.yml -f compose/35-web.yml \
+ -f compose/26-php-catalog.yml -f compose/30-java-services.yml -f compose/35-web.yml -f compose/36-node.yml \
  -f compose/40-nginx.yml -f compose/registration-local.yml
 .PHONY: registration-up registration-migrate registration-down
 registration-up:
-	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --wait --wait-timeout 180
+	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --scale node-service=0 --wait --wait-timeout 180
 	$(MAKE) registration-deps
 	$(MAKE) registration-migrate
+	$(MAKE) chat-migrate
+	$(REGISTRATION_COMPOSE) up -d --wait node-service
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -t
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -s reload
 registration-migrate:
@@ -300,3 +302,31 @@ registration-cache:
 	@for service in auth-service verification-service email-service dictionaries-service catalog-service web-service; do \
 	 $(REGISTRATION_COMPOSE) exec -T $$service php bin/console cache:clear --env=prod --no-debug || exit $$?; \
 	done
+
+.PHONY: chat-migrate chat-test
+chat-migrate:
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) run --rm --no-deps chat-db
+	$(REGISTRATION_COMPOSE) build node-service
+	$(REGISTRATION_COMPOSE) run --rm --no-deps node-service node dist/migrate.js
+chat-test:
+	$(REGISTRATION_COMPOSE) run --rm --no-deps chat-test
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-transfer-contract.php
+
+.PHONY: chat-e2e
+# Optional Python 3 test runner on the host; synthetic accounts are always cleaned up.
+chat-e2e:
+	@set -eu; task_dir=$$(mktemp -d); \
+	 $(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php setup > "$$task_dir/fixture.json"; \
+	 trap '$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php cleanup; rm -f "$$task_dir/fixture.json"; rmdir "$$task_dir"' EXIT; \
+	 python3 ../services/web-service/tests/chat-live.py --fixture "$$task_dir/fixture.json"
+
+.PHONY: auth-session-test
+auth-session-test:
+	$(REGISTRATION_COMPOSE) exec -T web-service php tests/auth-session-contract.php
+	@set -eu; task_dir=$$(mktemp -d); \
+	 $(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php setup > "$$task_dir/fixture.json"; \
+	 trap '$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php cleanup; rm -f "$$task_dir/fixture.json"; rmdir "$$task_dir"' EXIT; \
+	 candidate_email=$$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["candidateEmail"])' "$$task_dir/fixture.json"); \
+	 $(REGISTRATION_COMPOSE) exec -T auth-service php tests/persistent-session-contract.php "$$candidate_email"; \
+	 python3 ../services/web-service/tests/auth-session-live.py --fixture "$$task_dir/fixture.json"
