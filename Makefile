@@ -275,6 +275,14 @@ registration-migrate:
 	$(REGISTRATION_COMPOSE) exec -T catalog-service php bin/console doctrine:migrations:migrate --no-interaction
 registration-down:
 	$(REGISTRATION_COMPOSE) down
+
+# Destructive: removes only this local project's PostgreSQL volume, then rebuilds the schema.
+.PHONY: registration-reset-db
+registration-reset-db:
+	$(MAKE) registration-down
+	docker volume rm mesto-web_registration_data
+	$(MAKE) registration-up
+
 .PHONY: registration-test
 registration-test:
 	../services/verification-service/tests/run-contracts.sh
