@@ -17,8 +17,12 @@ RUN docker-php-ext-install \
     zip \
     pcntl
 
-RUN pecl install redis \
-    && docker-php-ext-enable redis
+#RUN pecl install redis \
+#    && docker-php-ext-enable redis
+COPY redis-6.3.0.tgz /tmp/redis-6.3.0.tgz
+RUN pecl install /tmp/redis-6.3.0.tgz \
+    && docker-php-ext-enable redis \
+    && rm -f /tmp/redis-6.3.0.tgz
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
