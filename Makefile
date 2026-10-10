@@ -254,13 +254,19 @@ REGISTRATION_COMPOSE=docker compose --env-file .env -p mesto-web \
  -f compose/22-php-email.yml -f compose/24-php-dictionaries.yml \
  -f compose/26-php-catalog.yml -f compose/30-java-services.yml -f compose/35-web.yml \
  -f compose/40-nginx.yml -f compose/registration-local.yml
-.PHONY: registration-up registration-migrate registration-down
+.PHONY: registration-up registration-rebuild registration-permissions registration-migrate registration-down
 registration-up:
-	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --wait --wait-timeout 180
+	$(REGISTRATION_COMPOSE) config --quiet
+	$(REGISTRATION_COMPOSE) up -d $(REGISTRATION_BUILD_FLAG) --wait --wait-timeout 600
 	$(MAKE) registration-deps
+	$(MAKE) registration-permissions
 	$(MAKE) registration-migrate
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -t
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -s reload
+registration-rebuild:
+	$(MAKE) registration-up REGISTRATION_BUILD_FLAG=--build
+registration-permissions:
+	$(REGISTRATION_COMPOSE) exec -T -u root web-service sh -ec 'mkdir -p var/cache/prod var/sessions/prod var/log; chown www-data:www-data var; chown -R www-data:www-data var/cache var/sessions var/log'
 registration-migrate:
 	$(REGISTRATION_COMPOSE) exec -T auth-service php bin/console doctrine:migrations:migrate --no-interaction
 	$(REGISTRATION_COMPOSE) exec -T verification-service php bin/console doctrine:migrations:migrate --no-interaction
