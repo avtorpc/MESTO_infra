@@ -64,7 +64,9 @@ wait-db:
 wait-event-api:
 	@echo ""
 	@echo "[2/5] Waiting for Event API..."
-	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' $(EVENT_API_CONTAINER))" = "healthy" ]; do \
+	@deadline=$$(( $$(date +%s) + 600 )); \
+	until [ "$$(docker inspect -f '{{.State.Health.Status}}' $(EVENT_API_CONTAINER))" = "healthy" ]; do \
+		if [ $$(date +%s) -ge $$deadline ]; then echo "Event API readiness timed out after 600 seconds"; exit 1; fi; \
 		echo "Event API is not healthy yet..."; \
 		sleep 2; \
 	done
@@ -73,7 +75,9 @@ wait-event-api:
 wait-event-worker:
 	@echo ""
 	@echo "[3/5] Waiting for Event Worker..."
-	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' $(EVENT_WORKER_CONTAINER))" = "healthy" ]; do \
+	@deadline=$$(( $$(date +%s) + 600 )); \
+	until [ "$$(docker inspect -f '{{.State.Health.Status}}' $(EVENT_WORKER_CONTAINER))" = "healthy" ]; do \
+		if [ $$(date +%s) -ge $$deadline ]; then echo "Event Worker readiness timed out after 600 seconds"; exit 1; fi; \
 		echo "Event Worker is not healthy yet..."; \
 		sleep 2; \
 	done
@@ -256,11 +260,11 @@ REGISTRATION_COMPOSE=docker compose --env-file .env -p mesto-web \
  -f compose/40-nginx.yml -f compose/registration-local.yml
 .PHONY: registration-up registration-migrate registration-down
 registration-up:
-	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --scale node-service=0 --wait --wait-timeout 180
+	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --scale node-service=0 --wait --wait-timeout 600
 	$(MAKE) registration-deps
 	$(MAKE) registration-migrate
 	$(MAKE) chat-migrate
-	$(REGISTRATION_COMPOSE) up -d --wait node-service
+	$(REGISTRATION_COMPOSE) up -d --wait --wait-timeout 600 node-service
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -t
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -s reload
 registration-migrate:

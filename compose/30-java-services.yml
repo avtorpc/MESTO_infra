@@ -27,9 +27,11 @@ services:
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 5s
-      timeout: 2s
+      timeout: 5s
       retries: 10
-      start_period: 10s
+      # Slow servers may need up to ten minutes to start the JVM and connect to Kafka.
+      # A successful check marks the container healthy immediately during this period.
+      start_period: 600s
 
     networks:
       - backend
@@ -74,9 +76,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 5s
-      timeout: 2s
+      timeout: 5s
       retries: 10
-      start_period: 15s
+      start_period: 600s
 
     networks:
       - backend
