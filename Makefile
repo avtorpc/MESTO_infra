@@ -26,7 +26,7 @@ NGINX_CONTAINER=gateway_nginx
 up-debug:
 	pwd
 	ls -la ./config/jwt
-up:
+up: registration-jwt-permissions
 	@echo "Starting environment..."
 	$(COMPOSE) up -d --build
 
@@ -258,8 +258,14 @@ REGISTRATION_COMPOSE=docker compose --env-file .env -p mesto-web \
  -f compose/22-php-email.yml -f compose/24-php-dictionaries.yml \
  -f compose/26-php-catalog.yml -f compose/30-java-services.yml -f compose/35-web.yml -f compose/36-node.yml \
  -f compose/40-nginx.yml -f compose/registration-local.yml
-.PHONY: registration-up registration-migrate registration-down
-registration-up:
+.PHONY: registration-up registration-migrate registration-down registration-jwt-permissions
+# Host bind-mounted JWT files; check both before changing permissions.
+registration-jwt-permissions:
+	@test -f config/jwt/private.pem && test -f config/jwt/public.pem || { \
+	 echo "JWT files are missing or are directories: config/jwt/private.pem, config/jwt/public.pem" >&2; exit 1; \
+	}
+	chmod 777 config/jwt/private.pem config/jwt/public.pem
+registration-up: registration-jwt-permissions
 	$(REGISTRATION_COMPOSE) up -d --build --remove-orphans --scale node-service=0 --wait --wait-timeout 600
 	$(MAKE) registration-deps
 	$(MAKE) registration-migrate
