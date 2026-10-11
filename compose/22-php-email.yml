@@ -3,7 +3,7 @@ services:
     build:
       context: ../docker/php
     container_name: email_service_php
-    command: ["sh", "-c", "(while true; do php bin/console app:email:consume-pending; sleep 2; done) & exec php-fpm"]
+    command: ["sh", "-c", "set -e; test -f .env || cp .env.example .env; php-app bin/check-vendor.php; (while true; do php-app bin/console app:email:consume-pending; sleep 2; done) & exec php-fpm"]
     environment:
       APP_ENV: ${APP_ENV}
       APP_DEBUG: ${APP_DEBUG}

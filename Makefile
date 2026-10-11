@@ -98,23 +98,23 @@ migrate:
 
 	@echo "→ AUTH"
 	$(COMPOSE) exec -T auth-service \
-		php bin/console doctrine:migrations:migrate -v --no-interaction
+		php-app bin/console doctrine:migrations:migrate -v --no-interaction
 
 	@echo "→ VERIFICATION"
 	$(COMPOSE) exec -T verification-service \
-		php bin/console doctrine:migrations:migrate -v --no-interaction
+		php-app bin/console doctrine:migrations:migrate -v --no-interaction
 
 	@echo "→ EMAIL"
 	$(COMPOSE) exec -T email-service \
-		php bin/console doctrine:migrations:migrate -v --no-interaction
+		php-app bin/console doctrine:migrations:migrate -v --no-interaction
 
 	@echo "→ DICTIONARIES(refbook)"
 	$(COMPOSE) exec -T dictionaries-service \
-		php bin/console doctrine:migrations:migrate -v --no-interaction
+		php-app bin/console doctrine:migrations:migrate -v --no-interaction
 
 	@echo "→ CATALOG(catalog)"
 	$(COMPOSE) exec -T catalog-service \
-		php bin/console doctrine:migrations:migrate -v --no-interaction
+		php-app bin/console doctrine:migrations:migrate -v --no-interaction
 
 	@echo "✓ All migrations completed"
 
@@ -268,11 +268,11 @@ registration-up:
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -t
 	$(REGISTRATION_COMPOSE) exec -T nginx nginx -s reload
 registration-migrate:
-	$(REGISTRATION_COMPOSE) exec -T auth-service php bin/console doctrine:migrations:migrate --no-interaction
-	$(REGISTRATION_COMPOSE) exec -T verification-service php bin/console doctrine:migrations:migrate --no-interaction
-	$(REGISTRATION_COMPOSE) exec -T email-service php bin/console doctrine:migrations:migrate --no-interaction
-	$(REGISTRATION_COMPOSE) exec -T dictionaries-service php bin/console doctrine:migrations:migrate --no-interaction
-	$(REGISTRATION_COMPOSE) exec -T catalog-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T auth-service php-app bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T verification-service php-app bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T email-service php-app bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T dictionaries-service php-app bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php-app bin/console doctrine:migrations:migrate --no-interaction
 registration-down:
 	$(REGISTRATION_COMPOSE) down
 
@@ -289,15 +289,15 @@ registration-test:
 
 .PHONY: assessment-test
 assessment-test:
-	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/gigachat-isolation.php
-	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/catalog-schema-contract.php
-	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/assessment-contract.php
-	$(REGISTRATION_COMPOSE) exec -T web-service php tests/task-template-contract.php
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/gigachat-isolation.php
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/catalog-schema-contract.php
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/assessment-contract.php
+	$(REGISTRATION_COMPOSE) exec -T web-service php-app tests/task-template-contract.php
 
 .PHONY: registration-deps
 registration-deps:
-	@for service in auth-service verification-service email-service dictionaries-service catalog-service; do \
-	 $(REGISTRATION_COMPOSE) run --rm --no-deps $$service sh -c 'test -f .env || cp .env.example .env; composer install --no-interaction --prefer-dist --no-scripts' || exit $$?; \
+	@for service in auth-service verification-service email-service dictionaries-service catalog-service web-service; do \
+	 $(REGISTRATION_COMPOSE) exec -T $$service php-app bin/check-vendor.php || exit $$?; \
 	done
 
 # Diagnostics use the same local project/files as registration-up, never the legacy stack.
@@ -310,35 +310,41 @@ registration-logs:
 	$(REGISTRATION_COMPOSE) logs --tail=100 $(SERVICE)
 registration-restart:
 	$(REGISTRATION_COMPOSE) restart $(SERVICE)
-registration-cache:
+# Repair runtime ownership in existing containers without deleting data.
+.PHONY: registration-permissions
+registration-permissions:
 	@for service in auth-service verification-service email-service dictionaries-service catalog-service web-service; do \
-	 $(REGISTRATION_COMPOSE) exec -T $$service php bin/console cache:clear --env=prod --no-debug || exit $$?; \
+	 $(REGISTRATION_COMPOSE) exec -T --user root $$service project-entrypoint --prepare-only || exit $$?; \
+	done
+registration-cache: registration-permissions
+	@for service in auth-service verification-service email-service dictionaries-service catalog-service web-service; do \
+	 $(REGISTRATION_COMPOSE) exec -T $$service php-app bin/console cache:clear --env=prod --no-debug || exit $$?; \
 	done
 
 .PHONY: chat-migrate chat-test
 chat-migrate:
-	$(REGISTRATION_COMPOSE) exec -T catalog-service php bin/console doctrine:migrations:migrate --no-interaction
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php-app bin/console doctrine:migrations:migrate --no-interaction
 	$(REGISTRATION_COMPOSE) run --rm --no-deps chat-db
 	$(REGISTRATION_COMPOSE) build node-service
 	$(REGISTRATION_COMPOSE) run --rm --no-deps node-service node dist/migrate.js
 chat-test:
 	$(REGISTRATION_COMPOSE) run --rm --no-deps chat-test
-	$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-transfer-contract.php
+	$(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/chat-transfer-contract.php
 
 .PHONY: chat-e2e
 # Optional Python 3 test runner on the host; synthetic accounts are always cleaned up.
 chat-e2e:
 	@set -eu; task_dir=$$(mktemp -d); \
-	 $(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php setup > "$$task_dir/fixture.json"; \
-	 trap '$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php cleanup; rm -f "$$task_dir/fixture.json"; rmdir "$$task_dir"' EXIT; \
+	 $(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/chat-live-fixture.php setup > "$$task_dir/fixture.json"; \
+	 trap '$(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/chat-live-fixture.php cleanup; rm -f "$$task_dir/fixture.json"; rmdir "$$task_dir"' EXIT; \
 	 python3 ../services/web-service/tests/chat-live.py --fixture "$$task_dir/fixture.json"
 
 .PHONY: auth-session-test
 auth-session-test:
-	$(REGISTRATION_COMPOSE) exec -T web-service php tests/auth-session-contract.php
+	$(REGISTRATION_COMPOSE) exec -T web-service php-app tests/auth-session-contract.php
 	@set -eu; task_dir=$$(mktemp -d); \
-	 $(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php setup > "$$task_dir/fixture.json"; \
-	 trap '$(REGISTRATION_COMPOSE) exec -T catalog-service php tests/chat-live-fixture.php cleanup; rm -f "$$task_dir/fixture.json"; rmdir "$$task_dir"' EXIT; \
+	 $(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/chat-live-fixture.php setup > "$$task_dir/fixture.json"; \
+	 trap '$(REGISTRATION_COMPOSE) exec -T catalog-service php-app tests/chat-live-fixture.php cleanup; rm -f "$$task_dir/fixture.json"; rmdir "$$task_dir"' EXIT; \
 	 candidate_email=$$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["candidateEmail"])' "$$task_dir/fixture.json"); \
-	 $(REGISTRATION_COMPOSE) exec -T auth-service php tests/persistent-session-contract.php "$$candidate_email"; \
+	 $(REGISTRATION_COMPOSE) exec -T auth-service php-app tests/persistent-session-contract.php "$$candidate_email"; \
 	 python3 ../services/web-service/tests/auth-session-live.py --fixture "$$task_dir/fixture.json"

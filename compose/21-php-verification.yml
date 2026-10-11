@@ -4,7 +4,7 @@ services:
       context: ../docker/php
     container_name: verification_service_php
 
-    command: ["sh", "-c", "(while true; do php bin/console app:registration:dispatch; sleep 2; done) & exec php-fpm"]
+    command: ["sh", "-c", "set -e; test -f .env || cp .env.example .env; php-app bin/check-vendor.php; (while true; do php-app bin/console app:registration:dispatch; sleep 2; done) & exec php-fpm"]
     environment:
       AUTH_SERVICE_URL: http://nginx/auth
       REGISTRATION_INTERNAL_TOKEN: ${REGISTRATION_INTERNAL_TOKEN:-}

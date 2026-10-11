@@ -3,6 +3,7 @@ services:
     build:
       context: ../docker/php
     container_name: dictionaries_service_php
+    command: ["sh", "-c", "set -e; test -f .env || cp .env.example .env; php-app bin/check-vendor.php; exec php-fpm"]
 
     environment:
       # =====================

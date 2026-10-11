@@ -67,22 +67,8 @@ services:
 
     working_dir: /var/www/html
 
-    # Расширенная команда
-    command: >
-      sh -c "
-        mkdir -p /var/www/html/var/cache &&
-        mkdir -p /var/www/html/var/log &&
-        mkdir -p /var/www/html/var/uploads &&
-        chown -R www-data:www-data /var/www/html/var &&
-        chmod -R 775 /var/www/html/var &&
-        if [ \"$APP_ENV\" = \"dev\" ]; then
-          rm -rf /var/www/html/var/cache/* &&
-          echo 'Cache cleared'
-        fi &&
-        echo 'Все папки созданы и права настроены';
-        (while true; do php bin/console app:assessment:work; sleep 2; done) &
-        exec php-fpm
-      "
+    # Runtime permissions are prepared by the shared image entrypoint.
+    command: ["sh", "-c", "set -e; test -f .env || cp .env.example .env; php-app bin/check-vendor.php; (while true; do php-app bin/console app:assessment:work; sleep 2; done) & exec php-fpm"]
 
     depends_on:
       - postgres

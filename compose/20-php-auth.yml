@@ -3,6 +3,7 @@ services:
     build:
       context: ../docker/php
     container_name: auth_service_php
+    command: ["sh", "-c", "set -e; test -f .env || cp .env.example .env; php-app bin/check-vendor.php; exec php-fpm"]
     environment:
       WEB_SERVICE_INTERNAL_TOKEN: ${WEB_SERVICE_INTERNAL_TOKEN:-}
       REGISTRATION_INTERNAL_TOKEN: ${REGISTRATION_INTERNAL_TOKEN:-}

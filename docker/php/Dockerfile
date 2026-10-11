@@ -31,7 +31,11 @@ COPY php.ini /usr/local/etc/php/conf.d/99-custom.ini
 
 WORKDIR /var/www
 
-# Без entrypoint, просто запускаем php-fpm
+COPY project-entrypoint.sh /usr/local/bin/project-entrypoint
+COPY php-app /usr/local/bin/php-app
+RUN chmod 755 /usr/local/bin/project-entrypoint /usr/local/bin/php-app \
+    && command -v runuser
+ENTRYPOINT ["project-entrypoint"]
 CMD ["php-fpm"]
 
 # Project catalog only. Download and keep CAs inside the image, outside all host mounts.
