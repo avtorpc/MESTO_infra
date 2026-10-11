@@ -90,6 +90,8 @@ xdebug.log
 *.tmp
 *.cache
 *.pem
+!/config/jwt/private.pem
+!/config/jwt/public.pem
 *.key
 *.p12
 *.jks
