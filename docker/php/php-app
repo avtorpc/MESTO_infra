@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+# CLI tasks and FPM workers must create cache files with the same owner.
+umask 0002
+if [ "$(id -u)" = 0 ]; then
+    exec runuser -u www-data -- php "$@"
+fi
+exec php "$@"
