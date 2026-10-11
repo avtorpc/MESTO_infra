@@ -280,7 +280,12 @@ registration-down:
 .PHONY: registration-reset-db
 registration-reset-db:
 	$(MAKE) registration-down
-	docker volume rm mesto-web_registration_data
+	@if docker volume inspect mesto-web_registration_data >/dev/null 2>&1; then \
+	 docker volume rm mesto-web_registration_data; \
+	else \
+	 docker info >/dev/null || exit $$?; \
+	 echo "PostgreSQL volume is already absent; skipping removal."; \
+	fi
 	$(MAKE) registration-up
 
 .PHONY: registration-test
